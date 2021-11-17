@@ -1,0 +1,38 @@
+import os
+from glob import glob
+from java.sql import SQLException
+
+path = '<%=odiRef.getOption( "STAGE_DIR" )%>'
+pattern = os.path.join(path,'*.csv')
+sess_no = <%=odiRef.getSession("SESS_NO")%>
+
+# Change the Path to Stage
+os.chdir(path)
+files = glob(pattern)
+
+# Get the Connections
+src_conn = odiRef.getJDBCConnection( "SRC" )
+sql_stmt = src_conn.createStatement()
+
+for file in files:
+    filename = os.path.basename(file) # Get the FileName
+    #linecount_cmd = 'wc -l %s | cut -d" " -f1'%(file)
+    #linecount = os.system() # Get the Number of lines in a file
+    fp = open(file,'r')
+    linecount = len(fp.readlines())
+    fp.close()
+    
+  
+    sql_query = """INSERT INTO hr.files_audit VALUES
+  ('EMP',NULL,'%s','%s','PICKED',%d,SYSDATE,NULL,NULL,NULL,%d)""" %(path,filename,linecount,sess_no)
+  
+    try:
+        # Execute the statement to make entry in the audit table
+        sql_stmt.execute(sql_query)
+    except SQLException, se:
+        raise 'Error with Query \n%s'%(sql_query)
+
+# Close the Connections
+sql_stmt.close()
+src_conn.close()
+
